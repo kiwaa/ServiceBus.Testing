@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
+using ServiceBus.Testing.Queues;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -10,15 +11,15 @@ namespace ServiceBus.Testing
     internal class TestableServiceBusReceiver : ServiceBusReceiver
     {
         private readonly ServiceBusReceiverOptions options;
-        private readonly InMemoryQueue queue;
+        private readonly IQueue queue;
 
         private bool isClosed;
         public override bool IsClosed => isClosed;
-        public TestableServiceBusReceiver(InMemoryQueue queue) : this(queue, null)
+        public TestableServiceBusReceiver(IQueue queue) : this(queue, null)
         {
         }
 
-        public TestableServiceBusReceiver(InMemoryQueue queue, ServiceBusReceiverOptions options)
+        public TestableServiceBusReceiver(IQueue queue, ServiceBusReceiverOptions options)
         {
             this.queue = queue;
             this.options = options ?? new ServiceBusReceiverOptions();
@@ -26,16 +27,12 @@ namespace ServiceBus.Testing
 
         public override async Task<ServiceBusReceivedMessage> ReceiveMessageAsync(TimeSpan? maxWaitTime = null, CancellationToken cancellationToken = default)
         {
-            var message = await queue.GetAsync(cancellationToken);
-            return ToReceived(message);
+            return await queue.GetAsync(cancellationToken);
         }
 
-        public override async IAsyncEnumerable<ServiceBusReceivedMessage> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public override IAsyncEnumerable<ServiceBusReceivedMessage> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await foreach (var message in queue.GetAllAsync(cancellationToken: cancellationToken))
-            {
-                yield return ToReceived(message);
-            }
+            return queue.GetAllAsync(cancellationToken: cancellationToken);
         }
 
         public override async Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync(int maxMessages, TimeSpan? maxWaitTime = null, CancellationToken cancellationToken = default)
@@ -43,15 +40,14 @@ namespace ServiceBus.Testing
             var list = new List<ServiceBusReceivedMessage>();
             await foreach (var message in queue.GetAllAsync(maxMessages, cancellationToken))
             {
-                list.Add(ToReceived(message));
+                list.Add(message);
             }
             return list;
         }
 
         public override async Task<ServiceBusReceivedMessage> PeekMessageAsync(long? fromSequenceNumber = null, CancellationToken cancellationToken = default)
         {
-            var message = await queue.GetAsync(cancellationToken);
-            return ToReceived(message);
+            return await queue.GetAsync(cancellationToken);
         }
 
         public override Task<IReadOnlyList<ServiceBusReceivedMessage>> PeekMessagesAsync(int maxMessages, long? fromSequenceNumber = null, CancellationToken cancellationToken = default)
@@ -59,14 +55,14 @@ namespace ServiceBus.Testing
             throw new NotImplementedException();
         }
 
-        public override Task CompleteMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default)
+        public override async Task CompleteMessageAsync(ServiceBusReceivedMessage message, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await queue.Complete(message);
         }
 
-        public override Task AbandonMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null, CancellationToken cancellationToken = default)
+        public override async Task AbandonMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await queue.Abandon(message);
         }
 
         public override Task DeferMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null, CancellationToken cancellationToken = default)
@@ -87,14 +83,6 @@ namespace ServiceBus.Testing
         {
             isClosed = true;
             return Task.CompletedTask;
-        }
-        private ServiceBusReceivedMessage ToReceived(ServiceBusMessage message)
-        {
-            return ServiceBusModelFactory.ServiceBusReceivedMessage(
-                body: message.Body,
-                messageId: message.MessageId,
-                partitionKey: message.PartitionKey,
-                sessionId: message.SessionId);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
+using ServiceBus.Testing.Queues;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -9,14 +10,14 @@ namespace ServiceBus.Testing
 {
     internal class TestableServiceBusSessionReceiver : ServiceBusSessionReceiver
     {
-        private readonly InMemoryQueue queue;
+        private readonly IQueue queue;
         private readonly string sessionId;
         private readonly ServiceBusSessionReceiverOptions options;
         private bool isClosed;
 
         public override bool IsClosed => isClosed;
 
-        public TestableServiceBusSessionReceiver(InMemoryQueue queue, string sessionId, ServiceBusSessionReceiverOptions options)
+        public TestableServiceBusSessionReceiver(IQueue queue, string sessionId, ServiceBusSessionReceiverOptions options)
         {
             this.queue = queue;
             this.sessionId = sessionId;
@@ -25,8 +26,7 @@ namespace ServiceBus.Testing
 
         public override async Task<ServiceBusReceivedMessage> ReceiveMessageAsync(TimeSpan? maxWaitTime = null, CancellationToken cancellationToken = default)
         {
-            var message = await queue.GetAsync(sessionId, cancellationToken);
-            return ToReceived(message);
+            return await queue.GetAsync(sessionId, cancellationToken);
         }
         public override IAsyncEnumerable<ServiceBusReceivedMessage> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {

@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
+using ServiceBus.Testing.Queues;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,11 +11,11 @@ namespace ServiceBus.Testing
     internal class TestableServiceBusSender : ServiceBusSender
     {
         private readonly ConcurrentDictionary<ServiceBusMessageBatch, List<ServiceBusMessage>> batchCollection = new ConcurrentDictionary<ServiceBusMessageBatch, List<ServiceBusMessage>>();
-        private readonly InMemoryQueue queue;
+        private readonly IQueue queue;
 
         private bool isClosed;
         public override bool IsClosed => isClosed;
-        public TestableServiceBusSender(InMemoryQueue queue)
+        public TestableServiceBusSender(IQueue queue)
         {
             this.queue = queue;
         }

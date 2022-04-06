@@ -8,7 +8,7 @@ namespace ServiceBus.Testing.UnitTests.Samples
     public class Sample02_MessageSettlement
     {
         private string QueueName => Guid.NewGuid().ToString();
-        [Fact(Skip = "not supported yet")]
+        [Fact]
         public async Task CompleteMessage()
         {
             string queueName = QueueName;
@@ -36,7 +36,7 @@ namespace ServiceBus.Testing.UnitTests.Samples
 
         }
 
-        [Fact(Skip = "not supported yet")]
+        [Fact]
         public async Task AbandonMessage()
         {
             string queueName = QueueName;

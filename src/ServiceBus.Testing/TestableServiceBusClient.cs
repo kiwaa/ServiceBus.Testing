@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
+using ServiceBus.Testing.Queues;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -8,7 +9,7 @@ namespace ServiceBus.Testing
 {
     public class TestableServiceBusClient : ServiceBusClient
     {
-        private readonly ConcurrentDictionary<string, InMemoryQueue> queues = new ConcurrentDictionary<string, InMemoryQueue>();
+        private readonly ConcurrentDictionary<string, IQueue> queues = new ConcurrentDictionary<string, IQueue>();
         private ServiceBusClientOptions options;
 
         public TestableServiceBusClient()
@@ -73,9 +74,10 @@ namespace ServiceBus.Testing
         {
             return ValueTask.CompletedTask;
         }
-        private InMemoryQueue GetOrCreate(string queueName)
+        private IQueue GetOrCreate(string queueName)
         {
-            return queues.GetOrAdd(queueName, x => new InMemoryQueue());
+            //return queues.GetOrAdd(queueName, x => new InMemoryQueue());
+            return queues.GetOrAdd(queueName, x => new PeekLockCircularBuffer());
         }
 
     }
