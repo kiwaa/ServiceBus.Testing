@@ -1,13 +1,24 @@
 ﻿using Azure.Messaging.ServiceBus;
 using System;
 using System.Collections.Concurrent;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ServiceBus.Testing
 {
     public class TestableServiceBusClient : ServiceBusClient
     {
-        private ConcurrentDictionary<string, InMemoryQueue> queues = new ConcurrentDictionary<string, InMemoryQueue>();
+        private readonly ConcurrentDictionary<string, InMemoryQueue> queues = new ConcurrentDictionary<string, InMemoryQueue>();
+        private ServiceBusClientOptions options;
+
+        public TestableServiceBusClient()
+        {
+        }
+
+        public TestableServiceBusClient(ServiceBusClientOptions options)
+        {
+            this.options = options;
+        }
 
         public override ServiceBusSender CreateSender(string queueOrTopicName)
         {
@@ -36,6 +47,28 @@ namespace ServiceBus.Testing
         {
             throw new NotImplementedException();
         }
+
+        public override Task<ServiceBusSessionReceiver> AcceptNextSessionAsync(string queueName, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<ServiceBusSessionReceiver> AcceptNextSessionAsync(string topicName, string subscriptionName, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string queueName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default)
+        {
+            var queue = GetOrCreate(queueName);
+            return Task.FromResult((ServiceBusSessionReceiver)new TestableServiceBusSessionReceiver(queue, sessionId, options));
+        }
+
+        public override Task<ServiceBusSessionReceiver> AcceptSessionAsync(string topicName, string subscriptionName, string sessionId, ServiceBusSessionReceiverOptions options = null, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
         public override ValueTask DisposeAsync()
         {
             return ValueTask.CompletedTask;

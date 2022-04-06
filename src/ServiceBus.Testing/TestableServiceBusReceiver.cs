@@ -32,13 +32,29 @@ namespace ServiceBus.Testing
 
         public override async IAsyncEnumerable<ServiceBusReceivedMessage> ReceiveMessagesAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            await foreach (var message in queue.GetAllAsync(cancellationToken))
+            await foreach (var message in queue.GetAllAsync(cancellationToken: cancellationToken))
             {
                 yield return ToReceived(message);
             }
         }
 
-        public override Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync(int maxMessages, TimeSpan? maxWaitTime = null, CancellationToken cancellationToken = default)
+        public override async Task<IReadOnlyList<ServiceBusReceivedMessage>> ReceiveMessagesAsync(int maxMessages, TimeSpan? maxWaitTime = null, CancellationToken cancellationToken = default)
+        {
+            var list = new List<ServiceBusReceivedMessage>();
+            await foreach (var message in queue.GetAllAsync(maxMessages, cancellationToken))
+            {
+                list.Add(ToReceived(message));
+            }
+            return list;
+        }
+
+        public override async Task<ServiceBusReceivedMessage> PeekMessageAsync(long? fromSequenceNumber = null, CancellationToken cancellationToken = default)
+        {
+            var message = await queue.GetAsync(cancellationToken);
+            return ToReceived(message);
+        }
+
+        public override Task<IReadOnlyList<ServiceBusReceivedMessage>> PeekMessagesAsync(int maxMessages, long? fromSequenceNumber = null, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -53,15 +69,15 @@ namespace ServiceBus.Testing
             throw new NotImplementedException();
         }
 
+        public override Task DeferMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
         public override Task DeadLetterMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public override Task DeferMessageAsync(ServiceBusReceivedMessage message, IDictionary<string, object> propertiesToModify = null, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
         public override Task DeadLetterMessageAsync(ServiceBusReceivedMessage message, string deadLetterReason, string deadLetterErrorDescription = null, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();

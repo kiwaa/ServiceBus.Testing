@@ -1,4 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -9,30 +10,42 @@ namespace ServiceBus.Testing
 {
     internal class InMemoryQueue
     {
+        private readonly ConcurrentDictionary<string, Channel<ServiceBusMessage>> sessions = new ConcurrentDictionary<string, Channel<ServiceBusMessage>>();
         private readonly Channel<ServiceBusMessage> channel = Channel.CreateUnbounded<ServiceBusMessage>();
 
-        public ValueTask AddAsync(ServiceBusMessage message)
+        public async ValueTask AddAsync(ServiceBusMessage message)
         {
-            return channel.Writer.WriteAsync(message);
+            if (message.SessionId != null)
+                await GetOrAddSession(message.SessionId).Writer.WriteAsync(message);
+            await channel.Writer.WriteAsync(message);
         }
-        public Task AddAllAsync(IEnumerable<ServiceBusMessage> batch)
+        public async ValueTask AddAllAsync(IEnumerable<ServiceBusMessage> batch)
         {
-            return Task.WhenAll(batch.Select(x => channel.Writer.WriteAsync(x).AsTask()));
+            foreach (var message in batch)
+                await AddAsync(message);
         }
 
         public ValueTask<ServiceBusMessage> GetAsync(CancellationToken cancellationToken = default)
         {
             return channel.Reader.ReadAsync(cancellationToken);
         }
+        public ValueTask<ServiceBusMessage> GetAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            return GetOrAddSession(sessionId).Reader.ReadAsync(cancellationToken);
+        }
 
-        public IAsyncEnumerable<ServiceBusMessage> GetAllAsync(CancellationToken cancellationToken)
+        public IAsyncEnumerable<ServiceBusMessage> GetAllAsync(int maxMessages = int.MaxValue, CancellationToken cancellationToken = default)
         {
             var list = new List<ServiceBusMessage>();
-            while (channel.Reader.TryRead(out ServiceBusMessage message))
+            while (list.Count < maxMessages && channel.Reader.TryRead(out ServiceBusMessage message))
                 list.Add(message);
 
             return list.ToAsyncEnumerable();
         }
 
+        private Channel<ServiceBusMessage> GetOrAddSession(string sessionId)
+        {
+            return sessions.GetOrAdd(sessionId, x => Channel.CreateUnbounded<ServiceBusMessage>());
+        }
     }
 }
